@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_ws_operation">
+    <sys_ws_operation action="INSERT_OR_UPDATE">
+        <active>true</active>
+        <consumes>application/json,application/xml,text/xml</consumes>
+        <consumes_customized>false</consumes_customized>
+        <default_operation_uri/>
+        <enforce_acl>cf9d01d3e73003009d6247e603f6a990</enforce_acl>
+        <http_method>POST</http_method>
+        <name>Subscribe to Course</name>
+        <operation_script><![CDATA[(function process(request, response) {
+  var requestBody = request.body.data;
+  var courseId = requestBody.course_id;
+  var userId = gs.getUserID();
+
+  // Log incoming data
+  gs.info('Subscription API called with courseId: ' + courseId + ' and userId: ' + userId);
+
+  // Insert the new validation code here
+  if (!courseId) {
+    response.setStatus(400); // Bad Request
+    response.setBody({ error: 'Invalid course ID.' });
+    return;
+  }
+  var courseGr = new GlideRecord('x_quo_coursehub_course');
+  if (!courseGr.get(courseId)) {
+    response.setStatus(404); // Not Found
+    response.setBody({ error: 'Course not found.' });
+    return;
+  }
+
+  // Find or create the learner record
+  var learnerGr = new GlideRecord('x_quo_coursehub_learner');
+  learnerGr.addQuery('user_account', userId);
+  learnerGr.query();
+  if (!learnerGr.next()) {
+    learnerGr.initialize();
+    learnerGr.user_account = userId;
+    learnerGr.admission_date = new GlideDateTime();
+    learnerGr.insert();
+  }
+
+  // Check if already subscribed
+  var subGr = new GlideRecord('x_quo_coursehub_course_subscription');
+  subGr.addQuery('learner', learnerGr.sys_id);
+  subGr.addQuery('course', courseId);
+  subGr.query();
+  if (subGr.hasNext()) {
+    response.setStatus(409); // Conflict
+    response.setBody({ error: 'Already subscribed to this course.' });
+    return;
+  }
+
+  // Create the subscription
+  subGr.initialize();
+  subGr.learner = learnerGr.sys_id;
+  subGr.course = courseId;
+  subGr.subscription_date = new GlideDateTime();
+
+//   Temp log for debugging
+  var newSubId = subGr.insert();
+  gs.info('Created new subscription with sys_id: ' + newSubId);
+
+  response.setStatus(201); // Created
+  response.setBody({ message: 'Subscription successful.' });
+})(request, response);
+]]></operation_script>
+        <operation_uri>/api/x_quo_coursehub/course_subscription_api/subscribe</operation_uri>
+        <produces>application/json,application/xml,text/xml</produces>
+        <produces_customized>false</produces_customized>
+        <relative_path>/subscribe</relative_path>
+        <request_example/>
+        <requires_acl_authorization>true</requires_acl_authorization>
+        <requires_authentication>true</requires_authentication>
+        <requires_snc_internal_role>true</requires_snc_internal_role>
+        <short_description/>
+        <sys_class_name>sys_ws_operation</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2024-09-28 12:15:00</sys_created_on>
+        <sys_id>ae7a612783b8d2101d959796feaad390</sys_id>
+        <sys_mod_count>7</sys_mod_count>
+        <sys_name>Subscribe to Course</sys_name>
+        <sys_package display_value="CourseHub" source="x_quo_coursehub">d7affc501bf0ded0afce657a234bcb67</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="CourseHub">d7affc501bf0ded0afce657a234bcb67</sys_scope>
+        <sys_update_name>sys_ws_operation_ae7a612783b8d2101d959796feaad390</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-09-29 17:52:44</sys_updated_on>
+        <web_service_definition display_value="Course Subscription API">3d47612383b8d2101d959796feaad3ed</web_service_definition>
+        <web_service_version/>
+    </sys_ws_operation>
+    <sys_es_latest_script action="INSERT_OR_UPDATE">
+        <id>ae7a612783b8d2101d959796feaad390</id>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2024-09-28 12:14:59</sys_created_on>
+        <sys_id>e1ab69eb8378d2101d959796feaad3df</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-09-28 12:14:59</sys_updated_on>
+        <table>sys_ws_operation</table>
+        <use_es_latest>true</use_es_latest>
+    </sys_es_latest_script>
+</record_update>

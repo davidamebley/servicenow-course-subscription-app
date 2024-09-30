@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_widget">
+    <sp_widget action="INSERT_OR_UPDATE">
+        <category>custom</category>
+        <client_script><![CDATA[api.controller = function($scope, $http, spModal, $rootScope) {
+    var c = this;
+    var data = c.data; // Access data from server script
+
+    // Initialize courses with subscription status
+    c.courses = data.courses.map(function(course) {
+        course.isSubscribed = data.subscribedCourseIds.includes(course.sys_id);
+        return course;
+    });
+
+    c.subscribe = function(course) {
+        var courseId = course.sys_id;
+        var requestBody = { course_id: courseId };
+        if (course.isSubscribed) {
+            // Unsubscribe
+            $http.post('/api/x_quo_coursehub/course_subscription_api/unsubscribe', requestBody)
+                .then(function(response) {
+                    spModal.alert('Unsubscribed successfully!');
+                    course.isSubscribed = false;
+                    // Broadcast the event
+                    $rootScope.$broadcast('subscriptionUpdated', { action: 'unsubscribe', courseId: courseId });
+                }, function(error) {
+                    var errorMessage = 'An error occurred during unsubscription.';
+                    if (error && error.data && error.data.error) {
+                        errorMessage = 'Unsubscription failed: ' + error.data.error;
+                    } else if (error && error.statusText) {
+                        errorMessage = 'Unsubscription failed: ' + error.statusText;
+                    }
+                    spModal.alert(errorMessage);
+                });
+        } else {
+            // Subscribe
+            $http.post('/api/x_quo_coursehub/course_subscription_api/subscribe', requestBody)
+                .then(function(response) {
+                    spModal.alert('Subscription successful!');
+                    course.isSubscribed = true;
+                    // Broadcast the event
+                    $rootScope.$broadcast('subscriptionUpdated', { action: 'subscribe', courseId: courseId });
+                }, function(error) {
+                    var errorMessage = 'An error occurred during subscription.';
+                    if (error && error.data && error.data.error) {
+                        errorMessage = 'Subscription failed: ' + error.data.error;
+                    } else if (error && error.statusText) {
+                        errorMessage = 'Subscription failed: ' + error.statusText;
+                    }
+                    spModal.alert(errorMessage);
+                });
+        }
+    };
+
+    c.dragStart = function(event) {
+        var courseId = event.currentTarget.getAttribute('data-course-id');
+        event.dataTransfer.setData('text/plain', courseId);
+
+        angular.element(event.currentTarget).addClass('dragging');
+        angular.element(document.body).addClass('dragging-active');
+    };
+
+    c.dragEnd = function(event) {
+        angular.element(event.currentTarget).removeClass('dragging');
+        angular.element(document.body).removeClass('dragging-active');
+    };
+
+    c.onMouseEnter = function(event) {
+        angular.element(event.currentTarget).addClass('hovered');
+    };
+
+    c.onMouseLeave = function(event) {
+        angular.element(event.currentTarget).removeClass('hovered');
+    };
+
+    // Listen for the 'subscriptionUpdated' event
+    $scope.$on('subscriptionUpdated', function(event, data) {
+        var courseId = data.courseId;
+        var action = data.action;
+        // Find the course in c.courses and update its isSubscribed property
+        var updatedCourse = c.courses.find(function(course) {
+            return course.sys_id === courseId;
+        });
+        if (updatedCourse) {
+            if (action === 'subscribe') {
+                updatedCourse.isSubscribed = true;
+            } else if (action === 'unsubscribe') {
+                updatedCourse.isSubscribed = false;
+            }
+            $scope.$applyAsync();
+        }
+    });
+};
+]]></client_script>
+        <controller_as>c</controller_as>
+        <css>.course-item {&#13;
+  border: 1px solid #ccc;&#13;
+  padding: 15px;&#13;
+  margin-bottom: 10px;&#13;
+  background-color: #fff;&#13;
+  cursor: grab;&#13;
+  position: relative;&#13;
+  transition: transform 0.2s, opacity 0.2s;&#13;
+}&#13;
+&#13;
+.course-item.hovered {&#13;
+  background-color: #f0f0f0;&#13;
+}&#13;
+&#13;
+.course-item.dragging {&#13;
+  opacity: 0.8;&#13;
+  transform: scale(0.9);&#13;
+  cursor: grabbing;&#13;
+}&#13;
+&#13;
+.course-item.dragging-over-drop-zone {&#13;
+  transform: scale(0.8);&#13;
+}&#13;
+&#13;
+.course-item::after {&#13;
+  content: 'Drag to subscribe';&#13;
+  position: absolute;&#13;
+  bottom: 10px;&#13;
+  right: 10px;&#13;
+  font-size: 0.8em;&#13;
+  color: #777;&#13;
+  opacity: 0;&#13;
+  transition: opacity 0.2s;&#13;
+}&#13;
+&#13;
+.course-item:hover::after {&#13;
+  opacity: 1;&#13;
+}&#13;
+&#13;
+/* Darken the background during dragging */&#13;
+.dragging-active .course-list .course-item:not(.dragging) {&#13;
+  opacity: 0.3;&#13;
+}&#13;
+&#13;
+.dragging-active .subscription-drop-zone {&#13;
+  opacity: 1;&#13;
+}&#13;
+</css>
+        <data_table>sp_instance</data_table>
+        <demo_data/>
+        <description/>
+        <docs/>
+        <field_list/>
+        <has_preview>false</has_preview>
+        <id>course_list</id>
+        <internal>false</internal>
+        <link><![CDATA[function link(scope, element, attrs, controller) {  }]]></link>
+        <name>Course List</name>
+        <option_schema/>
+        <public>false</public>
+        <roles/>
+        <script><![CDATA[(function() {
+    data.courses = [];
+
+    // Fetch all courses
+    var courseGr = new GlideRecord('x_quo_coursehub_course');
+    courseGr.orderBy('title');
+    courseGr.query();
+    while (courseGr.next()) {
+        data.courses.push({
+            sys_id: courseGr.getValue('sys_id'),
+            title: courseGr.getValue('title'),
+            description: courseGr.getValue('description'),
+            duration: courseGr.getDisplayValue('duration'),
+            type: courseGr.getDisplayValue('type')
+        });
+    }
+
+    // Fetch user's current subscriptions
+    data.subscribedCourseIds = [];
+    var userId = gs.getUserID();
+    var learnerGr = new GlideRecord('x_quo_coursehub_learner');
+    learnerGr.addQuery('user_account', userId);
+    learnerGr.query();
+    if (learnerGr.next()) {
+        var subscriptionGr = new GlideRecord('x_quo_coursehub_course_subscription');
+        subscriptionGr.addQuery('learner', learnerGr.sys_id);
+        subscriptionGr.query();
+        while (subscriptionGr.next()) {
+            data.subscribedCourseIds.push(subscriptionGr.getValue('course'));
+        }
+    }
+})();
+]]></script>
+        <servicenow>false</servicenow>
+        <sys_class_name>sp_widget</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2024-09-27 14:00:33</sys_created_on>
+        <sys_id>523a305383b092101d959796feaad3ff</sys_id>
+        <sys_mod_count>41</sys_mod_count>
+        <sys_name>Course List</sys_name>
+        <sys_package display_value="CourseHub" source="x_quo_coursehub">d7affc501bf0ded0afce657a234bcb67</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="CourseHub">d7affc501bf0ded0afce657a234bcb67</sys_scope>
+        <sys_update_name>sp_widget_523a305383b092101d959796feaad3ff</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-09-30 10:51:10</sys_updated_on>
+        <template><![CDATA[<div class="course-list">
+  <div class="course-item"
+       ng-repeat="course in c.courses"
+       draggable="true"
+       ondragstart="angular.element(this).scope().c.dragStart(event)"
+       ondragend="angular.element(this).scope().c.dragEnd(event)"
+       data-course-id="{{course.sys_id}}"
+       data-course="course"
+       ng-mouseenter="c.onMouseEnter($event)"
+       ng-mouseleave="c.onMouseLeave($event)">
+    <div class="course-content">
+      <h3>{{course.title}}</h3>
+      <p>{{course.description}}</p>
+      <p>Duration: {{course.duration}}</p>
+      <p>Type: {{course.type}}</p>
+      <button class="btn"
+              ng-class="{'btn-primary': !course.isSubscribed, 'btn-danger': course.isSubscribed}"
+              ng-click="c.subscribe(course)">
+        {{course.isSubscribed ? 'Unsubscribe' : 'Subscribe'}}
+      </button>
+    </div>
+  </div>
+</div>
+]]></template>
+    </sp_widget>
+    <sys_es_latest_script action="INSERT_OR_UPDATE">
+        <id>523a305383b092101d959796feaad3ff</id>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2024-09-28 12:23:31</sys_created_on>
+        <sys_id>6a9de1a783b8d2101d959796feaad3e5</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-09-28 12:23:31</sys_updated_on>
+        <table>sp_widget</table>
+        <use_es_latest>true</use_es_latest>
+    </sys_es_latest_script>
+</record_update>

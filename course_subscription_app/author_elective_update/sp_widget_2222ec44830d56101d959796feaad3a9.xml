@@ -1,0 +1,1228 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_widget">
+    <sp_widget action="DELETE">
+        <category>standard</category>
+        <client_script><![CDATA[function clientController ($scope, spUtil, $rootScope, $timeout, spAriaUtil, spGtd, $window, i18n) {
+	var c = this; // Reference the controller instance
+
+	var KEY_ENTER = 13;
+	$scope.collapse = function() {
+		$rootScope.$emit('sp-navbar-collapse');
+	}
+	$scope.loadingIndicator = $rootScope.loadingIndicator;
+	$scope.cartItemCount = 0;
+	$scope.wishlistItemCount = 0;
+	$scope.toursTooltipEnabled = true;
+	$scope.currentTour = spGtd.getCurrentTour();
+	$scope.accessibilityEnabled = spAriaUtil.g_accessibility === "true";
+	$scope.isMobile = spUtil.isMobile();
+	var isCartCountSetAtleastOnce = false;
+	var cancelTooltipPromise;
+	$scope.$on("$sp.service_catalog.cart.count", function($evt, count) {
+		var previousCount = $scope.cartItemCount;
+		$scope.cartItemCount = count;
+		if (previousCount >= $scope.cartItemCount)
+			return;
+		if (!isCartCountSetAtleastOnce) {
+			isCartCountSetAtleastOnce = true;
+			return;
+		}
+		$timeout.cancel(cancelTooltipPromise);
+		$timeout(function() {
+			setCartTooltipVisibility(true);
+		});
+		cancelTooltipPromise = $timeout(function() {
+			setCartTooltipVisibility(false);
+		}, 3000);
+	});
+	$scope.$on("$sp.service_catalog.wishlist.count", function($evt, count) {
+		$scope.wishlistItemCount = count;
+	});
+	$scope.$on('sp_loading_indicator', function(e, value) {
+		$scope.loadingIndicator = value;
+	});
+	function setCartTooltipVisibility(value) {
+		$("#cart-dropdown").tooltip(value ? "show": "hide");
+	};
+	$scope.toggleTours = function() {
+		var action = $scope.toursTooltipEnabled ? 'disable' : 'enable';
+		$scope.toursTooltipEnabled = $scope.toursTooltipEnabled ? false : true;
+		$('[data-toggle-second="tooltip"]').tooltip(action);
+		if(action == 'disable')
+			$('[data-toggle-second="tooltip"]').tooltip('hide');
+		$scope.currentTour = spGtd.getCurrentTour();
+	};
+	$scope.endTour = function() {
+	  spGtd.endTour();
+	};
+	$scope.endTourByKeyDown = function(e) {
+		if(e.which === KEY_ENTER) {
+		  spGtd.endTour();
+		}
+	};
+	$scope.onToursItemBlur = function() {
+		$('[data-toggle-second="tooltip"]').tooltip('enable');
+		$scope.toursTooltipEnabled = true;
+	};
+	// PRB1108244: visibleItems array is used to improve keyboard nav
+	// in menu, refresh it as needed
+	$scope.$watch('data.menu.items', function() {
+		$scope.visibleItems = [];
+		if ($scope.data.menu.items) {
+			for (var i in $scope.data.menu.items) {
+				var item = $scope.data.menu.items[i];
+				if (item.items || (item.scriptedItems && item.scriptedItems.count != 0))
+					$scope.visibleItems.push(item);
+			}
+		}
+	}, true);
+  $scope.$on('sp-tour-ended', function() {
+	  $timeout(function(){$scope.currentTour = null});
+    $timeout(function() {
+		  $('.dropdown-menu a:visible', $('.gtd-dropdown-container')).first().focus();
+	  }, 5);
+  });
+  $scope.$on('sp-menu-update-tours', function(event, tours) {
+    $scope.data.showTours = $scope.data.showTours && !spUtil.isMobile();
+    if ($scope.data.showTours === false) {
+			$scope.data.guidedTours = null;
+			return;
+	}
+    var guidedToursLabel = 'Guided Tours';
+    $scope.data.guidedTours = {
+		label: guidedToursLabel,
+		collection: []
+	};
+    $scope.tooltipTours = tours.length === 1 ? i18n.getMessage('This page currently has 1 tour') : i18n.getMessage('This page currently has {0} tours').withValues([tours.length])
+    if (tours.length > 0) {
+      $scope.data.guidedTours.collection = tours.map(function(t) {
+        return {
+          title:  t.name,
+          id: t.id,
+          clicked: function() {
+            spGtd.launch(t.id);
+          }
+        };
+      });
+    }
+  });
+
+	// Initialize subscription count
+    c.subscriptionCount = c.data.subscriptionCount;
+
+    // Listen for subscription events
+    $scope.$on('subscriptionUpdated', function(event, data) {
+        if (data.action === 'subscribe') {
+            c.subscriptionCount++;
+        } else if (data.action === 'unsubscribe') {
+            c.subscriptionCount--;
+        }
+        // Ensure subscriptionCount does not go below zero
+        if (c.subscriptionCount < 0) {
+            c.subscriptionCount = 0;
+        }
+        $scope.$applyAsync(); // Update the view
+    });
+
+	// Get list of record watchers
+	var record_watchers = [];
+	if ($scope.data.menu.items) {
+		for(var i in $scope.data.menu.items) {
+			var item = $scope.data.menu.items[i];
+			if (item.type == 'scripted') {
+				if (item.scriptedItems.record_watchers)
+					record_watchers = record_watchers.concat(item.scriptedItems.record_watchers);
+			}
+			if (item.type == 'filtered') {
+				record_watchers.push({'table':item.table,'filter':item.filter});
+			}
+		}
+	}
+	// Init record watchers
+	for (var y in record_watchers){
+		var watcher = record_watchers[y];
+		spUtil.recordWatch($scope, watcher.table, watcher.filter);
+	}
+  $rootScope.$broadcast('sp-header-loaded');
+}]]></client_script>
+        <controller_as>c</controller_as>
+        <css>.header-loader {&#13;
+	float: left;&#13;
+  	width: 24px;&#13;
+  	position: relative;&#13;
+  	top: 24px;&#13;
+}&#13;
+&#13;
+.badge {&#13;
+    background-color: #d9534f;&#13;
+    color: white;&#13;
+    padding: 3px 7px;&#13;
+    border-radius: 10px;&#13;
+    font-size: 12px;&#13;
+    margin-left: 5px;&#13;
+}&#13;
+&#13;
+.cart-dropdown, .wishlist-menu, .gtd-dropdown-container .empty-dropdown {&#13;
+  width: 350px;&#13;
+  padding: 0;&#13;
+  z-index: 1000;&#13;
+  border-top-left-radius: 4px !important;&#13;
+  border-top-right-radius: 4px !important;&#13;
+&#13;
+  ul {&#13;
+    max-height: 300px;&#13;
+    overflow: auto;&#13;
+  }&#13;
+&#13;
+  .subtotal {&#13;
+    display: block;&#13;
+  }&#13;
+&#13;
+  .item-image {&#13;
+    padding: 0;&#13;
+    margin: 0;&#13;
+    text-align: center;&#13;
+    max-width:100%;&#13;
+    height:auto;&#13;
+  }&#13;
+  label, p {&#13;
+    padding: 0;&#13;
+    margin: 0;&#13;
+  }&#13;
+  .media {&#13;
+    padding: 0;&#13;
+    margin: 0;&#13;
+  }&#13;
+  .media-left &gt; a {&#13;
+    display: block;&#13;
+    width: 48px;&#13;
+    max-width: 48px;&#13;
+  }&#13;
+  .media-body {&#13;
+    label {&#13;
+      font-weight: bold;&#13;
+    }&#13;
+  }&#13;
+  li.media {&#13;
+    border-top: 1px solid #cccccc;&#13;
+    padding: $header-menu-item-padding;&#13;
+  }&#13;
+  .panel {&#13;
+    margin: 0;&#13;
+  }&#13;
+  .panel .panel-body {&#13;
+    padding: 0;&#13;
+  }&#13;
+  .btn-clear {&#13;
+		color: #333;&#13;
+    background-color: #fff;&#13;
+  }&#13;
+  p.quantity-price {&#13;
+    padding-top: 0.5rem;&#13;
+    span {&#13;
+      color: $text-muted;&#13;
+      padding-right: 0.5rem;&#13;
+      unicode-bidi: isolate;&#13;
+    }&#13;
+  }&#13;
+  .align-right {&#13;
+  	text-align: right;&#13;
+  }&#13;
+}&#13;
+&#13;
+&#13;
+&#13;
+.item-added-tooltip, wishlist-item-added-tooltip {&#13;
+  width: 184px;&#13;
+  font-size: 14px;&#13;
+}&#13;
+&#13;
+.open &gt; .dropdown-menu {&#13;
+	padding: 0.5rem 0.2rem !important;&#13;
+}&#13;
+&#13;
+.gtd-dropdown-container {&#13;
+  .empty-tour-content{&#13;
+    text-align: center;&#13;
+    margin:40px 20px;&#13;
+  }&#13;
+  .dropdown-menu li {&#13;
+    a {&#13;
+      cursor: pointer;&#13;
+    }&#13;
+    min-width: 20em;&#13;
+  }&#13;
+  .label-as-badge{&#13;
+    width: 12px;&#13;
+    height: 12px;&#13;
+    display: inline-block;&#13;
+    padding: 0px;&#13;
+    padding-top: 2px;&#13;
+  }&#13;
+  .badge-container {&#13;
+    display: inline-block;&#13;
+    width: 12px;&#13;
+  }&#13;
+  .end-tour-menu {&#13;
+    width: 300px;&#13;
+    background-color: #fff;&#13;
+    .end-tour-body {&#13;
+       display:flex; &#13;
+       flex-flow: column; &#13;
+       margin: 5px; &#13;
+       row-gap: 8px;&#13;
+    }&#13;
+    .end-tour-name {&#13;
+      white-space: nowrap;&#13;
+      overflow: hidden;&#13;
+      text-overflow: ellipsis;&#13;
+    }&#13;
+  }&#13;
+}&#13;
+&#13;
+@media  (max-width: 845px) and (min-width: 768px)  {&#13;
+	.header-menu-item ul {&#13;
+		right: auto;&#13;
+		left: auto;&#13;
+	}&#13;
+}&#13;
+@media (max-width: 767px) {&#13;
+	.empty-dropdown, .end-tour-menu {&#13;
+		width: auto !important;&#13;
+	}&#13;
+}&#13;
+</css>
+        <data_table>sp_instance_menu</data_table>
+        <demo_data/>
+        <description>This is a custom-cloned Header Menu for the Course Subscription app</description>
+        <docs/>
+        <field_list>title</field_list>
+        <has_preview>false</has_preview>
+        <id/>
+        <internal>false</internal>
+        <link><![CDATA[(function(scope, elem) {
+		function isMDScreenSize() {
+		return window.matchMedia('(max-width: 992px)').matches;
+	}
+	
+	var KEY = {
+		TAB : 9,
+		ENTER : 13,
+		ESC : 27,
+		SPACE_BAR : 32,
+		LEFT : 37,
+		UP : 38,
+		RIGHT : 39,
+		DOWN : 40
+	}
+
+	$('.navbar').on('keydown','[id="sp-nav-bar"]:visible',function(e) {
+		var mdScreenSize = isMDScreenSize();
+		var target = e.target;
+		if (target.localName == 'a') {
+			var currentMenuItem = $(target).parents('li').first();
+			var parentUL = currentMenuItem.parents('ul').first();
+			
+			var menuItem = currentMenuItem;
+			var targetInSubmenu = !currentMenuItem.is('.header-menu-item');
+			if (targetInSubmenu) {
+				menuItem = $(target).parents('li.header-menu-item').first();
+			}
+			
+			if (mdScreenSize && e.keyCode == KEY.RIGHT) {
+				if ($(target).is('.dropdown-toggle') || $(target).is('[data-toggle="dropdown"]')) { // Target is a main menu item with sub-menu
+					e.preventDefault();
+					e.stopPropagation();
+					currentMenuItem.addClass('open');
+					$('> a:visible', menuItem).attr("aria-expanded", "true");
+					currentMenuItem.find('.dropdown-menu a:visible').first().focus();
+				}
+			} else if (mdScreenSize && e.keyCode == KEY.LEFT) {
+				if (parentUL.is('.dropdown-menu')) { // Target is a sub-menu item
+					parentUL.parents('.header-menu-item').first().removeClass('open').find('> a:visible').first().focus();
+					setAriaExpandedFalse(menuItem);
+				}
+			} else if ((mdScreenSize && e.keyCode == KEY.UP) || (!mdScreenSize && e.keyCode == KEY.LEFT)) {
+				handleFocus(false, e, mdScreenSize, menuItem, currentMenuItem, parentUL, targetInSubmenu);
+			} else if((mdScreenSize && e.keyCode == KEY.DOWN) || (!mdScreenSize && e.keyCode == KEY.RIGHT)) {
+				handleFocus(true, e, mdScreenSize, menuItem, currentMenuItem, parentUL, targetInSubmenu);
+			}
+			if(e.keyCode == KEY.TAB) {
+				if($(target).parents('li').hasClass('open'))
+					$(target).dropdown('toggle');
+				setAriaExpandedFalse(menuItem);
+			}
+		}
+	});
+	
+	function setAriaExpandedFalse(menuItem) {
+			if (menuItem.is('.dropdown'))
+				$('> a:visible', menuItem).attr("aria-expanded", "false");		
+	}
+
+	function handleFocus(next, event, mdScreenSize, menuItem, currentMenuItem, parentUL, targetInSubmenu) {
+		event.preventDefault();
+		
+		if (targetInSubmenu) {
+			var itemsInSubmenu = parentUL.find('li.visible');
+			var firstSubmenuItem = itemsInSubmenu.first();
+			var lastSubmenuItem = itemsInSubmenu.last();
+		}
+		var allMenuItems = $('li.header-menu-item:visible', '.navbar');
+		var firstMenuItem = allMenuItems.first();
+		var lastMenuItem = allMenuItems.last();
+
+		if (!mdScreenSize) {
+			currentMenuItem.removeClass('open');
+			setAriaExpandedFalse(menuItem);
+
+			if (targetInSubmenu)
+				menuItem.removeClass('open');
+		} else {
+			event.stopPropagation();
+			if (!targetInSubmenu) {
+				menuItem.removeClass('open');
+				setAriaExpandedFalse(menuItem);
+			}
+		}
+
+		var indexMenuItem = allMenuItems.index(menuItem);
+		var targetMenuItem = next ? allMenuItems.eq(indexMenuItem + 1) : allMenuItems.eq(indexMenuItem - 1);
+		var menuItemToFocus = targetMenuItem.length ? targetMenuItem : next ? firstMenuItem: lastMenuItem; //enable circular navigation
+
+		if (mdScreenSize && targetInSubmenu) {
+			targetMenuItem = next ? currentMenuItem.nextAll('li:visible').first() : currentMenuItem.prevAll('li:visible').first();
+			menuItemToFocus = targetMenuItem.length ? targetMenuItem : next ? firstSubmenuItem: lastSubmenuItem; //enable circular navigation
+		}
+		menuItemToFocus.find('a').focus();
+	}
+
+	$(elem).on('click', '[data-toggle="dropdown"]', function(e) {
+		var $target = $(e.target);
+		setTimeout(function() {
+			$('.dropdown-menu a:visible', $target.parents('.header-menu-item')).first().focus();
+		}, 0);
+	});
+
+	setTimeout(function(){
+		$('[data-toggle-second="tooltip"]').tooltip();
+		bsDropdownTooltipShim('#cart-dropdown', '#cart-dropdown-wrapper');
+		bsDropdownTooltipShim('#wishlist-menu', "#wishlist-menu-wrapper");
+	});
+	
+	function bsDropdownTooltipShim(tooltipTrigger, dropdownParent) {
+		if ($(dropdownParent).length) {
+			$(tooltipTrigger).tooltip();
+			$(dropdownParent).on('shown.bs.dropdown', function() {
+				$(tooltipTrigger).tooltip('disable');
+				$(tooltipTrigger).tooltip('hide');
+			});
+			$(dropdownParent).on('hidden.bs.dropdown', function() {
+				$(tooltipTrigger).tooltip('enable');
+			});
+		}
+	}
+});]]></link>
+        <name>Copy of Header Menu</name>
+        <option_schema/>
+        <public>true</public>
+        <roles/>
+        <script><![CDATA[(function(){
+	// build menus
+	var menu_id = $sp.getValue('sys_id'); // instance sys_id
+	data.menu = {};
+	data.menu.items = $sp.getMenuItems(menu_id);
+	data.isLoggedIn = GlideSession.get().isLoggedIn();
+	data.guidedTours = {};
+	// Show tours only if gtd's sp sys property is set
+	data.showTours = (gs.getProperty('com.snc.guided_tours.sp.enable') === 'true') && data.isLoggedIn;
+	if (!data.showTours) {
+	data.guidedTours = null;
+	}
+	var catalogArr = ($sp.getCatalogs().value + "").split(",");
+
+	catalogArr.forEach(function(catalog) {
+		data.showWishlist = data.showWishlist || new sn_sc.Catalog(catalog).isWishlistEnabled();
+	});
+	if (data.isLoggedIn) {
+		if (options.enable_wishlist && data.showWishlist)
+			data.wishlistWidget = $sp.getWidget("sc_wishlist_cart", {wishlistTemplate: "small_wishlist.html", auto_update_wishlist:options.auto_update_wishlist});
+		if (options.enable_cart) {
+			if (gs.getProperty("glide.sc.portal.use_cart_v2_header", "false") === "true")
+				data.cartWidget = $sp.getWidget("sc-shopping-cart-v2", {cartTemplate: "small_shopping_cart_v2.html", auto_update_cart:options.auto_update_cart});
+			else
+				data.cartWidget = $sp.getWidget("sc-shopping-cart", {cartTemplate: "small_shopping_cart.html", auto_update_cart:options.auto_update_cart});
+		}
+	}
+
+	// Calculate the Course subscription count
+    data.subscriptionCount = 0;
+    var userId = gs.getUserID();
+    var learnerGr = new GlideRecord('x_quo_coursehub_learner');
+    learnerGr.addQuery('user_account', userId);
+    learnerGr.query();
+    if (learnerGr.next()) {
+        var subscriptionGr = new GlideRecord('x_quo_coursehub_course_subscription');
+        subscriptionGr.addQuery('learner', learnerGr.sys_id);
+        subscriptionGr.query();
+        data.subscriptionCount = subscriptionGr.getRowCount();
+    }
+})();]]></script>
+        <servicenow>false</servicenow>
+        <sys_class_name>sp_widget</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2024-09-29 20:10:53</sys_created_on>
+        <sys_id>2222ec44830d56101d959796feaad3a9</sys_id>
+        <sys_mod_count>2</sys_mod_count>
+        <sys_name>Copy of Header Menu</sys_name>
+        <sys_package display_value="CourseHub" source="x_quo_coursehub">d7affc501bf0ded0afce657a234bcb67</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="CourseHub">d7affc501bf0ded0afce657a234bcb67</sys_scope>
+        <sys_update_name>sp_widget_2222ec44830d56101d959796feaad3a9</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-09-29 21:27:12</sys_updated_on>
+        <template><![CDATA[<ul class="nav navbar-nav" aria-label="${Header}">
+  <div class="header-loader" ng-class="{'invisible': !loadingIndicator}">
+    <div class="hidden-xs hidden-sm sp-loading-indicator la-sm">
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+  </div>
+  <li ng-repeat="item in visibleItems" ng-class="{dropdown: item.items.length > 0, 'header-menu-item': true}" ng-include="'menuTemplate'"></li>
+  
+  <!-- My Courses Menu Item -->
+  <li ng-if="data.isLoggedIn" class="header-menu-item">
+    <a href="?id=my_courses" ng-click="collapse()">
+      My Courses
+      <span class="badge" ng-if="c.subscriptionCount > 0">{{ c.subscriptionCount }}</span>
+    </a>
+  </li>
+  
+<!-- Wishlist menu -->
+  <li ng-if="options.enable_wishlist && data.isLoggedIn && data.showWishlist" ng-show="!accessibilityEnabled" id="wishlist-menu-wrapper" class="dropdown hidden-xs header-menu-item">
+  	<a role="button" href="javascript:void(0)"
+       data-toggle="dropdown"
+       id="wishlist-menu"
+       data-placement="bottom"
+       data-original-title="${Your Wish List currently has} {{wishlistItemCount}} ${items}"
+       aria-label="${Wish List}">
+      <span ng-bind-html="'${Wish List}'" aria-hidden="true"></span>
+      <span ng-if="wishlistItemCount > 0" aria-hidden="true" class="label label-as-badge label-primary sp-navbar-badge-count">{{wishlistItemCount}}</span>
+		</a>
+    <div class="dropdown-menu wishlist-menu custom-drop-down">
+      <sp-widget widget="data.wishlistWidget"></sp-widget>
+    </div>
+  </li>
+  <li ng-if="options.enable_wishlist && data.isLoggedIn && data.showWishlist" class="dropdown" ng-class="{'visible-xs': !accessibilityEnabled}">
+  	<a href="?id=sc_wishlist"
+       title="${Your Wish List currently has} {{wishlistItemCount}} ${items}"
+       data-toggle="tooltip"
+       data-placement="bottom"
+       class="toggle-dropdown"
+       role="button"
+       aria-label="${Your Wish List currently has} {{wishlistItemCount}} ${items}">
+      <span ng-bind-html="'${Wish List}'" aria-hidden="true"></span>
+      <span ng-if="wishlistItemCount > 0" aria-hidden="true" class="label label-as-badge label-primary sp-navbar-badge-count">{{wishlistItemCount}}</span>
+		</a>
+  </li>
+  <!-- Shopping cart stuff -->
+ <li ng-if="::options.enable_cart && data.isLoggedIn" ng-show="!accessibilityEnabled" id="cart-dropdown-wrapper" class="dropdown hidden-xs header-menu-item">
+  	<a href
+       data-toggle="dropdown"
+       id="cart-dropdown"
+       data-placement="bottom"
+       data-original-title="${Your shopping cart currently has} {{cartItemCount}} ${items}"
+       aria-label="${Shopping cart}"
+       role="button">
+    	<i class="fa fa-shopping-cart" aria-hidden="true"></i>
+      <span ng-bind-html="'${Cart}'" aria-hidden="true"></span>
+      <span ng-if="cartItemCount > 0" aria-hidden="true" class="label label-as-badge label-primary sp-navbar-badge-count">{{cartItemCount}}</span>
+		</a>
+    <div class="dropdown-menu cart-dropdown custom-drop-down">
+      <sp-widget widget="data.cartWidget"></sp-widget>
+    </div>
+  </li>
+  <li ng-if="::options.enable_cart && data.isLoggedIn" class="header-menu-item" ng-class="::{'visible-xs': !accessibilityEnabled}">
+  	<a ng-href="?id=sc_cart"
+       ng-click="collapse()"
+       data-toggle="tooltip"
+       data-placement="bottom"
+       data-original-title="${Your shopping cart currently has} {{cartItemCount}} ${items}"
+       class="toggle-dropdown"
+       aria-label="${Your shopping cart currently has} {{cartItemCount}} ${items}">
+    	<i class="fa fa-shopping-cart" aria-hidden="true"></i>
+      <span ng-bind-html="'${Cart}'" aria-hidden="true"></span>
+      <span ng-if="cartItemCount > 0" aria-hidden="true" class="label label-as-badge label-primary sp-navbar-badge-count">{{cartItemCount}}</span>
+	</a>
+  </li>
+  <li ng-if="data.isLoggedIn && data.guidedTours && !isMobile" class="dropdown header-menu-item gtd-dropdown-container">
+    <a href
+       data-toggle="dropdown"
+       id="tour-dropdown"
+       data-placement="bottom"
+       data-toggle-second="tooltip"
+       ng-click="toggleTours()"
+       ng-blur="onToursItemBlur()"
+       data-original-title="{{tooltipTours}}"
+       aria-label="{{data.guidedTours.label}}"
+       role="button">
+      <span ng-bind-html="'${Tours}'" aria-hidden="true"></span>
+      <span class='badge-container' ng-if="data.guidedTours.collection.length > 0">
+        <span aria-hidden="true" class="label label-as-badge label-primary sp-navbar-badge-count">
+          &nbsp;
+       </span>
+      </span>
+    </a>
+    <div ng-if="data.guidedTours.collection.length < 1 && !currentTour" class="dropdown-menu empty-dropdown">
+      <div class="panel ng-scope">
+       <div class="panel-body">
+        <div class="empty-tour-content" role="alert">
+         <h4>${You have no tours on this page}</h4>
+         <p>${Tours appear when your administrator creates them on specific pages}</p>
+        </div>
+       </div>
+      </div>
+    </div>
+    <ul ng-if="data.guidedTours.collection.length > 0 && !currentTour" class="dropdown-menu"
+        role="menu" aria-label="${Tours}">
+      <li ng-repeat="mi in data.guidedTours.collection"
+          class="ng-scope dropdown-menu-line">
+        <a role="button" href title="{{::mi.title}}" target="{{::mi.target}}" ng-click="mi.clicked()">
+          {{::mi.title | characters:60}}
+        </a>
+      </li>
+    </ul>
+    <div ng-if="currentTour" tabindex="0" class="dropdown-menu end-tour-menu" aria-label="${End Current Tour}: {{currentTour.name}}">
+      <div class="end-tour-body ng-scope">
+          <a type="button" class="btn btn-primary" tabindex="0" ng-click="endTour()" ng-keydown="endTourByKeyDown($event)">${End Tour}</a>
+          <p class="end-tour-name" title="{{currentTour.name}}">${Current Tour}: {{currentTour.name}}</p>
+	    </div>
+    </div>
+  </li>
+</ul>]]></template>
+    </sp_widget>
+    <sys_es_latest_script action="DELETE">
+        <id>2222ec44830d56101d959796feaad3a9</id>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2024-09-29 20:14:12</sys_created_on>
+        <sys_id>c7e22084830d56101d959796feaad318</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-09-29 20:14:12</sys_updated_on>
+        <table>sp_widget</table>
+        <use_es_latest>true</use_es_latest>
+    </sys_es_latest_script>
+    <sys_update_version action="INSERT_OR_UPDATE">
+        <action>DELETE</action>
+        <application display_value="CourseHub">d7affc501bf0ded0afce657a234bcb67</application>
+        <file_path/>
+        <instance_id>18c1100bdb7442182f082a5913961938</instance_id>
+        <instance_name>dev240230</instance_name>
+        <name>sp_widget_2222ec44830d56101d959796feaad3a9</name>
+        <payload>&lt;?xml version="1.0" encoding="UTF-8"?&gt;&lt;record_update table="sp_widget"&gt;&lt;sp_widget action="INSERT_OR_UPDATE"&gt;&lt;category&gt;standard&lt;/category&gt;&lt;client_script&gt;&lt;![CDATA[function clientController ($scope, spUtil, $rootScope, $timeout, spAriaUtil, spGtd, $window, i18n) {
+	var c = this; // Reference the controller instance
+
+	var KEY_ENTER = 13;
+	$scope.collapse = function() {
+		$rootScope.$emit('sp-navbar-collapse');
+	}
+	$scope.loadingIndicator = $rootScope.loadingIndicator;
+	$scope.cartItemCount = 0;
+	$scope.wishlistItemCount = 0;
+	$scope.toursTooltipEnabled = true;
+	$scope.currentTour = spGtd.getCurrentTour();
+	$scope.accessibilityEnabled = spAriaUtil.g_accessibility === "true";
+	$scope.isMobile = spUtil.isMobile();
+	var isCartCountSetAtleastOnce = false;
+	var cancelTooltipPromise;
+	$scope.$on("$sp.service_catalog.cart.count", function($evt, count) {
+		var previousCount = $scope.cartItemCount;
+		$scope.cartItemCount = count;
+		if (previousCount &gt;= $scope.cartItemCount)
+			return;
+		if (!isCartCountSetAtleastOnce) {
+			isCartCountSetAtleastOnce = true;
+			return;
+		}
+		$timeout.cancel(cancelTooltipPromise);
+		$timeout(function() {
+			setCartTooltipVisibility(true);
+		});
+		cancelTooltipPromise = $timeout(function() {
+			setCartTooltipVisibility(false);
+		}, 3000);
+	});
+	$scope.$on("$sp.service_catalog.wishlist.count", function($evt, count) {
+		$scope.wishlistItemCount = count;
+	});
+	$scope.$on('sp_loading_indicator', function(e, value) {
+		$scope.loadingIndicator = value;
+	});
+	function setCartTooltipVisibility(value) {
+		$("#cart-dropdown").tooltip(value ? "show": "hide");
+	};
+	$scope.toggleTours = function() {
+		var action = $scope.toursTooltipEnabled ? 'disable' : 'enable';
+		$scope.toursTooltipEnabled = $scope.toursTooltipEnabled ? false : true;
+		$('[data-toggle-second="tooltip"]').tooltip(action);
+		if(action == 'disable')
+			$('[data-toggle-second="tooltip"]').tooltip('hide');
+		$scope.currentTour = spGtd.getCurrentTour();
+	};
+	$scope.endTour = function() {
+	  spGtd.endTour();
+	};
+	$scope.endTourByKeyDown = function(e) {
+		if(e.which === KEY_ENTER) {
+		  spGtd.endTour();
+		}
+	};
+	$scope.onToursItemBlur = function() {
+		$('[data-toggle-second="tooltip"]').tooltip('enable');
+		$scope.toursTooltipEnabled = true;
+	};
+	// PRB1108244: visibleItems array is used to improve keyboard nav
+	// in menu, refresh it as needed
+	$scope.$watch('data.menu.items', function() {
+		$scope.visibleItems = [];
+		if ($scope.data.menu.items) {
+			for (var i in $scope.data.menu.items) {
+				var item = $scope.data.menu.items[i];
+				if (item.items || (item.scriptedItems &amp;&amp; item.scriptedItems.count != 0))
+					$scope.visibleItems.push(item);
+			}
+		}
+	}, true);
+  $scope.$on('sp-tour-ended', function() {
+	  $timeout(function(){$scope.currentTour = null});
+    $timeout(function() {
+		  $('.dropdown-menu a:visible', $('.gtd-dropdown-container')).first().focus();
+	  }, 5);
+  });
+  $scope.$on('sp-menu-update-tours', function(event, tours) {
+    $scope.data.showTours = $scope.data.showTours &amp;&amp; !spUtil.isMobile();
+    if ($scope.data.showTours === false) {
+			$scope.data.guidedTours = null;
+			return;
+	}
+    var guidedToursLabel = 'Guided Tours';
+    $scope.data.guidedTours = {
+		label: guidedToursLabel,
+		collection: []
+	};
+    $scope.tooltipTours = tours.length === 1 ? i18n.getMessage('This page currently has 1 tour') : i18n.getMessage('This page currently has {0} tours').withValues([tours.length])
+    if (tours.length &gt; 0) {
+      $scope.data.guidedTours.collection = tours.map(function(t) {
+        return {
+          title:  t.name,
+          id: t.id,
+          clicked: function() {
+            spGtd.launch(t.id);
+          }
+        };
+      });
+    }
+  });
+
+	// Initialize subscription count
+    c.subscriptionCount = c.data.subscriptionCount;
+
+    // Listen for subscription events
+    $scope.$on('subscriptionUpdated', function(event, data) {
+        if (data.action === 'subscribe') {
+            c.subscriptionCount++;
+        } else if (data.action === 'unsubscribe') {
+            c.subscriptionCount--;
+        }
+        // Ensure subscriptionCount does not go below zero
+        if (c.subscriptionCount &lt; 0) {
+            c.subscriptionCount = 0;
+        }
+        $scope.$applyAsync(); // Update the view
+    });
+
+	// Get list of record watchers
+	var record_watchers = [];
+	if ($scope.data.menu.items) {
+		for(var i in $scope.data.menu.items) {
+			var item = $scope.data.menu.items[i];
+			if (item.type == 'scripted') {
+				if (item.scriptedItems.record_watchers)
+					record_watchers = record_watchers.concat(item.scriptedItems.record_watchers);
+			}
+			if (item.type == 'filtered') {
+				record_watchers.push({'table':item.table,'filter':item.filter});
+			}
+		}
+	}
+	// Init record watchers
+	for (var y in record_watchers){
+		var watcher = record_watchers[y];
+		spUtil.recordWatch($scope, watcher.table, watcher.filter);
+	}
+  $rootScope.$broadcast('sp-header-loaded');
+}]]&gt;&lt;/client_script&gt;&lt;controller_as&gt;c&lt;/controller_as&gt;&lt;css&gt;.header-loader {&amp;#13;
+	float: left;&amp;#13;
+  	width: 24px;&amp;#13;
+  	position: relative;&amp;#13;
+  	top: 24px;&amp;#13;
+}&amp;#13;
+&amp;#13;
+.badge {&amp;#13;
+    background-color: #d9534f;&amp;#13;
+    color: white;&amp;#13;
+    padding: 3px 7px;&amp;#13;
+    border-radius: 10px;&amp;#13;
+    font-size: 12px;&amp;#13;
+    margin-left: 5px;&amp;#13;
+}&amp;#13;
+&amp;#13;
+.cart-dropdown, .wishlist-menu, .gtd-dropdown-container .empty-dropdown {&amp;#13;
+  width: 350px;&amp;#13;
+  padding: 0;&amp;#13;
+  z-index: 1000;&amp;#13;
+  border-top-left-radius: 4px !important;&amp;#13;
+  border-top-right-radius: 4px !important;&amp;#13;
+&amp;#13;
+  ul {&amp;#13;
+    max-height: 300px;&amp;#13;
+    overflow: auto;&amp;#13;
+  }&amp;#13;
+&amp;#13;
+  .subtotal {&amp;#13;
+    display: block;&amp;#13;
+  }&amp;#13;
+&amp;#13;
+  .item-image {&amp;#13;
+    padding: 0;&amp;#13;
+    margin: 0;&amp;#13;
+    text-align: center;&amp;#13;
+    max-width:100%;&amp;#13;
+    height:auto;&amp;#13;
+  }&amp;#13;
+  label, p {&amp;#13;
+    padding: 0;&amp;#13;
+    margin: 0;&amp;#13;
+  }&amp;#13;
+  .media {&amp;#13;
+    padding: 0;&amp;#13;
+    margin: 0;&amp;#13;
+  }&amp;#13;
+  .media-left &amp;gt; a {&amp;#13;
+    display: block;&amp;#13;
+    width: 48px;&amp;#13;
+    max-width: 48px;&amp;#13;
+  }&amp;#13;
+  .media-body {&amp;#13;
+    label {&amp;#13;
+      font-weight: bold;&amp;#13;
+    }&amp;#13;
+  }&amp;#13;
+  li.media {&amp;#13;
+    border-top: 1px solid #cccccc;&amp;#13;
+    padding: $header-menu-item-padding;&amp;#13;
+  }&amp;#13;
+  .panel {&amp;#13;
+    margin: 0;&amp;#13;
+  }&amp;#13;
+  .panel .panel-body {&amp;#13;
+    padding: 0;&amp;#13;
+  }&amp;#13;
+  .btn-clear {&amp;#13;
+		color: #333;&amp;#13;
+    background-color: #fff;&amp;#13;
+  }&amp;#13;
+  p.quantity-price {&amp;#13;
+    padding-top: 0.5rem;&amp;#13;
+    span {&amp;#13;
+      color: $text-muted;&amp;#13;
+      padding-right: 0.5rem;&amp;#13;
+      unicode-bidi: isolate;&amp;#13;
+    }&amp;#13;
+  }&amp;#13;
+  .align-right {&amp;#13;
+  	text-align: right;&amp;#13;
+  }&amp;#13;
+}&amp;#13;
+&amp;#13;
+&amp;#13;
+&amp;#13;
+.item-added-tooltip, wishlist-item-added-tooltip {&amp;#13;
+  width: 184px;&amp;#13;
+  font-size: 14px;&amp;#13;
+}&amp;#13;
+&amp;#13;
+.open &amp;gt; .dropdown-menu {&amp;#13;
+	padding: 0.5rem 0.2rem !important;&amp;#13;
+}&amp;#13;
+&amp;#13;
+.gtd-dropdown-container {&amp;#13;
+  .empty-tour-content{&amp;#13;
+    text-align: center;&amp;#13;
+    margin:40px 20px;&amp;#13;
+  }&amp;#13;
+  .dropdown-menu li {&amp;#13;
+    a {&amp;#13;
+      cursor: pointer;&amp;#13;
+    }&amp;#13;
+    min-width: 20em;&amp;#13;
+  }&amp;#13;
+  .label-as-badge{&amp;#13;
+    width: 12px;&amp;#13;
+    height: 12px;&amp;#13;
+    display: inline-block;&amp;#13;
+    padding: 0px;&amp;#13;
+    padding-top: 2px;&amp;#13;
+  }&amp;#13;
+  .badge-container {&amp;#13;
+    display: inline-block;&amp;#13;
+    width: 12px;&amp;#13;
+  }&amp;#13;
+  .end-tour-menu {&amp;#13;
+    width: 300px;&amp;#13;
+    background-color: #fff;&amp;#13;
+    .end-tour-body {&amp;#13;
+       display:flex; &amp;#13;
+       flex-flow: column; &amp;#13;
+       margin: 5px; &amp;#13;
+       row-gap: 8px;&amp;#13;
+    }&amp;#13;
+    .end-tour-name {&amp;#13;
+      white-space: nowrap;&amp;#13;
+      overflow: hidden;&amp;#13;
+      text-overflow: ellipsis;&amp;#13;
+    }&amp;#13;
+  }&amp;#13;
+}&amp;#13;
+&amp;#13;
+@media  (max-width: 845px) and (min-width: 768px)  {&amp;#13;
+	.header-menu-item ul {&amp;#13;
+		right: auto;&amp;#13;
+		left: auto;&amp;#13;
+	}&amp;#13;
+}&amp;#13;
+@media (max-width: 767px) {&amp;#13;
+	.empty-dropdown, .end-tour-menu {&amp;#13;
+		width: auto !important;&amp;#13;
+	}&amp;#13;
+}&amp;#13;
+&lt;/css&gt;&lt;data_table&gt;sp_instance_menu&lt;/data_table&gt;&lt;demo_data/&gt;&lt;description&gt;This is a custom-cloned Header Menu for the Course Subscription app&lt;/description&gt;&lt;docs/&gt;&lt;field_list&gt;title&lt;/field_list&gt;&lt;has_preview&gt;false&lt;/has_preview&gt;&lt;id/&gt;&lt;internal&gt;false&lt;/internal&gt;&lt;link&gt;&lt;![CDATA[(function(scope, elem) {
+		function isMDScreenSize() {
+		return window.matchMedia('(max-width: 992px)').matches;
+	}
+	
+	var KEY = {
+		TAB : 9,
+		ENTER : 13,
+		ESC : 27,
+		SPACE_BAR : 32,
+		LEFT : 37,
+		UP : 38,
+		RIGHT : 39,
+		DOWN : 40
+	}
+
+	$('.navbar').on('keydown','[id="sp-nav-bar"]:visible',function(e) {
+		var mdScreenSize = isMDScreenSize();
+		var target = e.target;
+		if (target.localName == 'a') {
+			var currentMenuItem = $(target).parents('li').first();
+			var parentUL = currentMenuItem.parents('ul').first();
+			
+			var menuItem = currentMenuItem;
+			var targetInSubmenu = !currentMenuItem.is('.header-menu-item');
+			if (targetInSubmenu) {
+				menuItem = $(target).parents('li.header-menu-item').first();
+			}
+			
+			if (mdScreenSize &amp;&amp; e.keyCode == KEY.RIGHT) {
+				if ($(target).is('.dropdown-toggle') || $(target).is('[data-toggle="dropdown"]')) { // Target is a main menu item with sub-menu
+					e.preventDefault();
+					e.stopPropagation();
+					currentMenuItem.addClass('open');
+					$('&gt; a:visible', menuItem).attr("aria-expanded", "true");
+					currentMenuItem.find('.dropdown-menu a:visible').first().focus();
+				}
+			} else if (mdScreenSize &amp;&amp; e.keyCode == KEY.LEFT) {
+				if (parentUL.is('.dropdown-menu')) { // Target is a sub-menu item
+					parentUL.parents('.header-menu-item').first().removeClass('open').find('&gt; a:visible').first().focus();
+					setAriaExpandedFalse(menuItem);
+				}
+			} else if ((mdScreenSize &amp;&amp; e.keyCode == KEY.UP) || (!mdScreenSize &amp;&amp; e.keyCode == KEY.LEFT)) {
+				handleFocus(false, e, mdScreenSize, menuItem, currentMenuItem, parentUL, targetInSubmenu);
+			} else if((mdScreenSize &amp;&amp; e.keyCode == KEY.DOWN) || (!mdScreenSize &amp;&amp; e.keyCode == KEY.RIGHT)) {
+				handleFocus(true, e, mdScreenSize, menuItem, currentMenuItem, parentUL, targetInSubmenu);
+			}
+			if(e.keyCode == KEY.TAB) {
+				if($(target).parents('li').hasClass('open'))
+					$(target).dropdown('toggle');
+				setAriaExpandedFalse(menuItem);
+			}
+		}
+	});
+	
+	function setAriaExpandedFalse(menuItem) {
+			if (menuItem.is('.dropdown'))
+				$('&gt; a:visible', menuItem).attr("aria-expanded", "false");		
+	}
+
+	function handleFocus(next, event, mdScreenSize, menuItem, currentMenuItem, parentUL, targetInSubmenu) {
+		event.preventDefault();
+		
+		if (targetInSubmenu) {
+			var itemsInSubmenu = parentUL.find('li.visible');
+			var firstSubmenuItem = itemsInSubmenu.first();
+			var lastSubmenuItem = itemsInSubmenu.last();
+		}
+		var allMenuItems = $('li.header-menu-item:visible', '.navbar');
+		var firstMenuItem = allMenuItems.first();
+		var lastMenuItem = allMenuItems.last();
+
+		if (!mdScreenSize) {
+			currentMenuItem.removeClass('open');
+			setAriaExpandedFalse(menuItem);
+
+			if (targetInSubmenu)
+				menuItem.removeClass('open');
+		} else {
+			event.stopPropagation();
+			if (!targetInSubmenu) {
+				menuItem.removeClass('open');
+				setAriaExpandedFalse(menuItem);
+			}
+		}
+
+		var indexMenuItem = allMenuItems.index(menuItem);
+		var targetMenuItem = next ? allMenuItems.eq(indexMenuItem + 1) : allMenuItems.eq(indexMenuItem - 1);
+		var menuItemToFocus = targetMenuItem.length ? targetMenuItem : next ? firstMenuItem: lastMenuItem; //enable circular navigation
+
+		if (mdScreenSize &amp;&amp; targetInSubmenu) {
+			targetMenuItem = next ? currentMenuItem.nextAll('li:visible').first() : currentMenuItem.prevAll('li:visible').first();
+			menuItemToFocus = targetMenuItem.length ? targetMenuItem : next ? firstSubmenuItem: lastSubmenuItem; //enable circular navigation
+		}
+		menuItemToFocus.find('a').focus();
+	}
+
+	$(elem).on('click', '[data-toggle="dropdown"]', function(e) {
+		var $target = $(e.target);
+		setTimeout(function() {
+			$('.dropdown-menu a:visible', $target.parents('.header-menu-item')).first().focus();
+		}, 0);
+	});
+
+	setTimeout(function(){
+		$('[data-toggle-second="tooltip"]').tooltip();
+		bsDropdownTooltipShim('#cart-dropdown', '#cart-dropdown-wrapper');
+		bsDropdownTooltipShim('#wishlist-menu', "#wishlist-menu-wrapper");
+	});
+	
+	function bsDropdownTooltipShim(tooltipTrigger, dropdownParent) {
+		if ($(dropdownParent).length) {
+			$(tooltipTrigger).tooltip();
+			$(dropdownParent).on('shown.bs.dropdown', function() {
+				$(tooltipTrigger).tooltip('disable');
+				$(tooltipTrigger).tooltip('hide');
+			});
+			$(dropdownParent).on('hidden.bs.dropdown', function() {
+				$(tooltipTrigger).tooltip('enable');
+			});
+		}
+	}
+});]]&gt;&lt;/link&gt;&lt;name&gt;Copy of Header Menu&lt;/name&gt;&lt;option_schema/&gt;&lt;public&gt;true&lt;/public&gt;&lt;roles/&gt;&lt;script&gt;&lt;![CDATA[(function(){
+	// build menus
+	var menu_id = $sp.getValue('sys_id'); // instance sys_id
+	data.menu = {};
+	data.menu.items = $sp.getMenuItems(menu_id);
+	data.isLoggedIn = GlideSession.get().isLoggedIn();
+	data.guidedTours = {};
+	// Show tours only if gtd's sp sys property is set
+	data.showTours = (gs.getProperty('com.snc.guided_tours.sp.enable') === 'true') &amp;&amp; data.isLoggedIn;
+	if (!data.showTours) {
+	data.guidedTours = null;
+	}
+	var catalogArr = ($sp.getCatalogs().value + "").split(",");
+
+	catalogArr.forEach(function(catalog) {
+		data.showWishlist = data.showWishlist || new sn_sc.Catalog(catalog).isWishlistEnabled();
+	});
+	if (data.isLoggedIn) {
+		if (options.enable_wishlist &amp;&amp; data.showWishlist)
+			data.wishlistWidget = $sp.getWidget("sc_wishlist_cart", {wishlistTemplate: "small_wishlist.html", auto_update_wishlist:options.auto_update_wishlist});
+		if (options.enable_cart) {
+			if (gs.getProperty("glide.sc.portal.use_cart_v2_header", "false") === "true")
+				data.cartWidget = $sp.getWidget("sc-shopping-cart-v2", {cartTemplate: "small_shopping_cart_v2.html", auto_update_cart:options.auto_update_cart});
+			else
+				data.cartWidget = $sp.getWidget("sc-shopping-cart", {cartTemplate: "small_shopping_cart.html", auto_update_cart:options.auto_update_cart});
+		}
+	}
+
+	// Calculate the Course subscription count
+    data.subscriptionCount = 0;
+    var userId = gs.getUserID();
+    var learnerGr = new GlideRecord('x_quo_coursehub_learner');
+    learnerGr.addQuery('user_account', userId);
+    learnerGr.query();
+    if (learnerGr.next()) {
+        var subscriptionGr = new GlideRecord('x_quo_coursehub_course_subscription');
+        subscriptionGr.addQuery('learner', learnerGr.sys_id);
+        subscriptionGr.query();
+        data.subscriptionCount = subscriptionGr.getRowCount();
+    }
+})();]]&gt;&lt;/script&gt;&lt;servicenow&gt;false&lt;/servicenow&gt;&lt;sys_class_name&gt;sp_widget&lt;/sys_class_name&gt;&lt;sys_created_by&gt;admin&lt;/sys_created_by&gt;&lt;sys_created_on&gt;2024-09-29 20:10:53&lt;/sys_created_on&gt;&lt;sys_id&gt;2222ec44830d56101d959796feaad3a9&lt;/sys_id&gt;&lt;sys_mod_count&gt;2&lt;/sys_mod_count&gt;&lt;sys_name&gt;Copy of Header Menu&lt;/sys_name&gt;&lt;sys_package display_value="CourseHub" source="x_quo_coursehub"&gt;d7affc501bf0ded0afce657a234bcb67&lt;/sys_package&gt;&lt;sys_policy/&gt;&lt;sys_scope display_value="CourseHub"&gt;d7affc501bf0ded0afce657a234bcb67&lt;/sys_scope&gt;&lt;sys_update_name&gt;sp_widget_2222ec44830d56101d959796feaad3a9&lt;/sys_update_name&gt;&lt;sys_updated_by&gt;admin&lt;/sys_updated_by&gt;&lt;sys_updated_on&gt;2024-09-29 21:27:12&lt;/sys_updated_on&gt;&lt;template&gt;&lt;![CDATA[&lt;ul class="nav navbar-nav" aria-label="${Header}"&gt;
+  &lt;div class="header-loader" ng-class="{'invisible': !loadingIndicator}"&gt;
+    &lt;div class="hidden-xs hidden-sm sp-loading-indicator la-sm"&gt;
+      &lt;div&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+  &lt;li ng-repeat="item in visibleItems" ng-class="{dropdown: item.items.length &gt; 0, 'header-menu-item': true}" ng-include="'menuTemplate'"&gt;&lt;/li&gt;
+  
+  &lt;!-- My Courses Menu Item --&gt;
+  &lt;li ng-if="data.isLoggedIn" class="header-menu-item"&gt;
+    &lt;a href="?id=my_courses" ng-click="collapse()"&gt;
+      My Courses
+      &lt;span class="badge" ng-if="c.subscriptionCount &gt; 0"&gt;{{ c.subscriptionCount }}&lt;/span&gt;
+    &lt;/a&gt;
+  &lt;/li&gt;
+  
+&lt;!-- Wishlist menu --&gt;
+  &lt;li ng-if="options.enable_wishlist &amp;&amp; data.isLoggedIn &amp;&amp; data.showWishlist" ng-show="!accessibilityEnabled" id="wishlist-menu-wrapper" class="dropdown hidden-xs header-menu-item"&gt;
+  	&lt;a role="button" href="javascript:void(0)"
+       data-toggle="dropdown"
+       id="wishlist-menu"
+       data-placement="bottom"
+       data-original-title="${Your Wish List currently has} {{wishlistItemCount}} ${items}"
+       aria-label="${Wish List}"&gt;
+      &lt;span ng-bind-html="'${Wish List}'" aria-hidden="true"&gt;&lt;/span&gt;
+      &lt;span ng-if="wishlistItemCount &gt; 0" aria-hidden="true" class="label label-as-badge label-primary sp-navbar-badge-count"&gt;{{wishlistItemCount}}&lt;/span&gt;
+		&lt;/a&gt;
+    &lt;div class="dropdown-menu wishlist-menu custom-drop-down"&gt;
+      &lt;sp-widget widget="data.wishlistWidget"&gt;&lt;/sp-widget&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+  &lt;li ng-if="options.enable_wishlist &amp;&amp; data.isLoggedIn &amp;&amp; data.showWishlist" class="dropdown" ng-class="{'visible-xs': !accessibilityEnabled}"&gt;
+  	&lt;a href="?id=sc_wishlist"
+       title="${Your Wish List currently has} {{wishlistItemCount}} ${items}"
+       data-toggle="tooltip"
+       data-placement="bottom"
+       class="toggle-dropdown"
+       role="button"
+       aria-label="${Your Wish List currently has} {{wishlistItemCount}} ${items}"&gt;
+      &lt;span ng-bind-html="'${Wish List}'" aria-hidden="true"&gt;&lt;/span&gt;
+      &lt;span ng-if="wishlistItemCount &gt; 0" aria-hidden="true" class="label label-as-badge label-primary sp-navbar-badge-count"&gt;{{wishlistItemCount}}&lt;/span&gt;
+		&lt;/a&gt;
+  &lt;/li&gt;
+  &lt;!-- Shopping cart stuff --&gt;
+ &lt;li ng-if="::options.enable_cart &amp;&amp; data.isLoggedIn" ng-show="!accessibilityEnabled" id="cart-dropdown-wrapper" class="dropdown hidden-xs header-menu-item"&gt;
+  	&lt;a href
+       data-toggle="dropdown"
+       id="cart-dropdown"
+       data-placement="bottom"
+       data-original-title="${Your shopping cart currently has} {{cartItemCount}} ${items}"
+       aria-label="${Shopping cart}"
+       role="button"&gt;
+    	&lt;i class="fa fa-shopping-cart" aria-hidden="true"&gt;&lt;/i&gt;
+      &lt;span ng-bind-html="'${Cart}'" aria-hidden="true"&gt;&lt;/span&gt;
+      &lt;span ng-if="cartItemCount &gt; 0" aria-hidden="true" class="label label-as-badge label-primary sp-navbar-badge-count"&gt;{{cartItemCount}}&lt;/span&gt;
+		&lt;/a&gt;
+    &lt;div class="dropdown-menu cart-dropdown custom-drop-down"&gt;
+      &lt;sp-widget widget="data.cartWidget"&gt;&lt;/sp-widget&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+  &lt;li ng-if="::options.enable_cart &amp;&amp; data.isLoggedIn" class="header-menu-item" ng-class="::{'visible-xs': !accessibilityEnabled}"&gt;
+  	&lt;a ng-href="?id=sc_cart"
+       ng-click="collapse()"
+       data-toggle="tooltip"
+       data-placement="bottom"
+       data-original-title="${Your shopping cart currently has} {{cartItemCount}} ${items}"
+       class="toggle-dropdown"
+       aria-label="${Your shopping cart currently has} {{cartItemCount}} ${items}"&gt;
+    	&lt;i class="fa fa-shopping-cart" aria-hidden="true"&gt;&lt;/i&gt;
+      &lt;span ng-bind-html="'${Cart}'" aria-hidden="true"&gt;&lt;/span&gt;
+      &lt;span ng-if="cartItemCount &gt; 0" aria-hidden="true" class="label label-as-badge label-primary sp-navbar-badge-count"&gt;{{cartItemCount}}&lt;/span&gt;
+	&lt;/a&gt;
+  &lt;/li&gt;
+  &lt;li ng-if="data.isLoggedIn &amp;&amp; data.guidedTours &amp;&amp; !isMobile" class="dropdown header-menu-item gtd-dropdown-container"&gt;
+    &lt;a href
+       data-toggle="dropdown"
+       id="tour-dropdown"
+       data-placement="bottom"
+       data-toggle-second="tooltip"
+       ng-click="toggleTours()"
+       ng-blur="onToursItemBlur()"
+       data-original-title="{{tooltipTours}}"
+       aria-label="{{data.guidedTours.label}}"
+       role="button"&gt;
+      &lt;span ng-bind-html="'${Tours}'" aria-hidden="true"&gt;&lt;/span&gt;
+      &lt;span class='badge-container' ng-if="data.guidedTours.collection.length &gt; 0"&gt;
+        &lt;span aria-hidden="true" class="label label-as-badge label-primary sp-navbar-badge-count"&gt;
+          &amp;nbsp;
+       &lt;/span&gt;
+      &lt;/span&gt;
+    &lt;/a&gt;
+    &lt;div ng-if="data.guidedTours.collection.length &lt; 1 &amp;&amp; !currentTour" class="dropdown-menu empty-dropdown"&gt;
+      &lt;div class="panel ng-scope"&gt;
+       &lt;div class="panel-body"&gt;
+        &lt;div class="empty-tour-content" role="alert"&gt;
+         &lt;h4&gt;${You have no tours on this page}&lt;/h4&gt;
+         &lt;p&gt;${Tours appear when your administrator creates them on specific pages}&lt;/p&gt;
+        &lt;/div&gt;
+       &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+    &lt;ul ng-if="data.guidedTours.collection.length &gt; 0 &amp;&amp; !currentTour" class="dropdown-menu"
+        role="menu" aria-label="${Tours}"&gt;
+      &lt;li ng-repeat="mi in data.guidedTours.collection"
+          class="ng-scope dropdown-menu-line"&gt;
+        &lt;a role="button" href title="{{::mi.title}}" target="{{::mi.target}}" ng-click="mi.clicked()"&gt;
+          {{::mi.title | characters:60}}
+        &lt;/a&gt;
+      &lt;/li&gt;
+    &lt;/ul&gt;
+    &lt;div ng-if="currentTour" tabindex="0" class="dropdown-menu end-tour-menu" aria-label="${End Current Tour}: {{currentTour.name}}"&gt;
+      &lt;div class="end-tour-body ng-scope"&gt;
+          &lt;a type="button" class="btn btn-primary" tabindex="0" ng-click="endTour()" ng-keydown="endTourByKeyDown($event)"&gt;${End Tour}&lt;/a&gt;
+          &lt;p class="end-tour-name" title="{{currentTour.name}}"&gt;${Current Tour}: {{currentTour.name}}&lt;/p&gt;
+	    &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;]]&gt;&lt;/template&gt;&lt;/sp_widget&gt;&lt;sys_es_latest_script action="INSERT_OR_UPDATE"&gt;&lt;id&gt;2222ec44830d56101d959796feaad3a9&lt;/id&gt;&lt;sys_created_by&gt;admin&lt;/sys_created_by&gt;&lt;sys_created_on&gt;2024-09-29 20:14:12&lt;/sys_created_on&gt;&lt;sys_id&gt;c7e22084830d56101d959796feaad318&lt;/sys_id&gt;&lt;sys_mod_count&gt;0&lt;/sys_mod_count&gt;&lt;sys_updated_by&gt;admin&lt;/sys_updated_by&gt;&lt;sys_updated_on&gt;2024-09-29 20:14:12&lt;/sys_updated_on&gt;&lt;table&gt;sp_widget&lt;/table&gt;&lt;use_es_latest&gt;true&lt;/use_es_latest&gt;&lt;/sys_es_latest_script&gt;&lt;/record_update&gt;</payload>
+        <payload_hash>-559317196</payload_hash>
+        <record_name>Copy of Header Menu</record_name>
+        <reverted_from/>
+        <source>0d205c9f83bc52101d959796feaad31c</source>
+        <source_table>sys_update_set</source_table>
+        <state>previous</state>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2024-09-29 21:27:12</sys_created_on>
+        <sys_id>2ca37084834d56101d959796feaad359</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_recorded_at>1923fae2e5a0000001</sys_recorded_at>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-09-29 21:27:12</sys_updated_on>
+        <type>Widget</type>
+        <update_guid>a0a370840e4d5610790b3a8d2eaf7b59</update_guid>
+        <update_guid_history>a0a370840e4d5610790b3a8d2eaf7b59:-559317196,e0482cc49f0d56107723d04be48db1d0:47305767,6622ec449b0d5610a64db24e2dd31eab:-333022581</update_guid_history>
+    </sys_update_version>
+    <sys_metadata_delete action="INSERT_OR_UPDATE">
+        <sys_audit_delete display_value="Copy of Header Menu">1454780c834d56101d959796feaad33a</sys_audit_delete>
+        <sys_class_name>sys_metadata_delete</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2024-09-29 21:30:12</sys_created_on>
+        <sys_db_object display_value="" name="sp_widget">sp_widget</sys_db_object>
+        <sys_id>11ce676e3b1e498cb6161918eea694c1</sys_id>
+        <sys_metadata>2222ec44830d56101d959796feaad3a9</sys_metadata>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>Copy of Header Menu</sys_name>
+        <sys_package display_value="CourseHub" source="x_quo_coursehub">d7affc501bf0ded0afce657a234bcb67</sys_package>
+        <sys_parent/>
+        <sys_policy/>
+        <sys_scope display_value="CourseHub">d7affc501bf0ded0afce657a234bcb67</sys_scope>
+        <sys_scope_delete display_value="">000122c0f5d3422480b2ea6a41b8cf10</sys_scope_delete>
+        <sys_update_name>sp_widget_2222ec44830d56101d959796feaad3a9</sys_update_name>
+        <sys_update_version display_value="sp_widget_2222ec44830d56101d959796feaad3a9">2ca37084834d56101d959796feaad359</sys_update_version>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-09-29 21:30:12</sys_updated_on>
+    </sys_metadata_delete>
+</record_update>

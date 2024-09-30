@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_widget">
+    <sp_widget action="INSERT_OR_UPDATE">
+        <category>custom</category>
+        <client_script><![CDATA[api.controller = function($scope, $rootScope) {
+    var c = this;
+    c.subscriptionCount = c.data.subscriptionCount;
+
+    // Function to fetch subscription count from server
+    c.getSubscriptionCount = function() {
+        c.server.get({ action: 'getSubscriptionCount' }).then(function(response) {
+            if (response && response.data && response.data.subscriptionCount !== undefined) {
+                c.subscriptionCount = response.data.subscriptionCount;
+            }
+        });
+    };
+
+    // Listen for subscription events
+    $scope.$on('subscriptionUpdated', function(event, data) {
+        c.getSubscriptionCount();
+    });
+};
+]]></client_script>
+        <controller_as>c</controller_as>
+        <css>.subscription-count-widget {
+ 	top: 80%;
+  position: fixed;
+  width: 30%;
+  height: 10%;
+    font-size: 1.5em;
+  	color: #777;
+    margin: 20px 0;
+    text-align: center;
+}
+
+.emphasis {
+  font-weight: 600;
+  color: #555;
+}</css>
+        <data_table>sp_instance</data_table>
+        <demo_data/>
+        <description/>
+        <docs/>
+        <field_list/>
+        <has_preview>false</has_preview>
+        <id>subscription_count</id>
+        <internal>false</internal>
+        <link><![CDATA[function link(scope, element, attrs, controller) {  }]]></link>
+        <name>Subscription Count</name>
+        <option_schema/>
+        <public>false</public>
+        <roles/>
+        <script><![CDATA[(function() {
+    data.subscriptionCount = getSubscriptionCount();
+
+    function getSubscriptionCount() {
+        var count = 0;
+        if (gs.getSession().isLoggedIn()) {
+            var userId = gs.getUserID();
+            var learnerGr = new GlideRecord('x_quo_coursehub_learner');
+            learnerGr.addQuery('user_account', userId);
+            learnerGr.query();
+            if (learnerGr.next()) {
+                var subscriptionGr = new GlideRecord('x_quo_coursehub_course_subscription');
+                subscriptionGr.addQuery('learner', learnerGr.sys_id);
+                subscriptionGr.query();
+                while (subscriptionGr.next()) {
+                    var course = subscriptionGr.course.getRefRecord();
+                    if (course.isValidRecord()) {
+                        count++;
+                    } else {
+                        // Delete invalid subscription records
+                        // subscriptionGr.deleteRecord();
+                        gs.info('Invalid course reference in subscription with sys_id: ' + subscriptionGr.getValue('sys_id'));
+                    }
+                }
+            }
+        }
+        return count;
+    }
+
+    // Handle server calls
+    if (input && input.action === 'getSubscriptionCount') {
+        data.subscriptionCount = getSubscriptionCount();
+    }
+})();
+]]></script>
+        <servicenow>false</servicenow>
+        <sys_class_name>sp_widget</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2024-09-30 03:33:07</sys_created_on>
+        <sys_id>a4670684830596101d959796feaad3b4</sys_id>
+        <sys_mod_count>18</sys_mod_count>
+        <sys_name>Subscription Count</sys_name>
+        <sys_package display_value="CourseHub" source="x_quo_coursehub">d7affc501bf0ded0afce657a234bcb67</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="CourseHub">d7affc501bf0ded0afce657a234bcb67</sys_scope>
+        <sys_update_name>sp_widget_a4670684830596101d959796feaad3b4</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-09-30 12:14:38</sys_updated_on>
+        <template><![CDATA[<div ng-if="c.subscriptionCount > 0" class="subscription-count-widget">
+  You are subscribed to <span class="emphasis">{{ c.subscriptionCount }} {{ c.subscriptionCount === 1 ? 'course' : 'courses' }} </span>.
+</div>
+<div ng-if="c.subscriptionCount === 0" class="subscription-count-widget">
+    You are not subscribed to any courses.
+</div>
+]]></template>
+    </sp_widget>
+</record_update>

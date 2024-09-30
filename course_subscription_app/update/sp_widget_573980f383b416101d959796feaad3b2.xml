@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_widget">
+    <sp_widget action="INSERT_OR_UPDATE">
+        <category>custom</category>
+        <client_script><![CDATA[api.controller = function($scope, $http, spModal, $rootScope) {
+  var c = this;
+
+  c.isDragOver = false;
+
+  c.onDragOver = function(event) {
+    event.preventDefault(); // Necessary to allow dropping
+    if (!c.isDragOver) {
+      c.isDragOver = true;
+      $scope.$applyAsync();
+    }
+  };
+
+  c.onDragLeave = function(event) {
+    if (c.isDragOver) {
+      c.isDragOver = false;
+      $scope.$applyAsync();
+    }
+  };
+
+  c.onDrop = function(event) {
+    event.preventDefault();
+    c.isDragOver = false;
+    var courseId = event.dataTransfer.getData('text/plain');
+
+    if (courseId) {
+      c.subscribe(courseId);
+    } else {
+      console.error('No courseId found in dataTransfer');
+    }
+    $scope.$applyAsync();
+  };
+
+  c.subscribe = function(courseId) {
+    var requestBody = { course_id: courseId };
+    $http.post('/api/x_quo_coursehub/course_subscription_api/subscribe', requestBody)
+      .then(function(response) {
+        spModal.alert('Subscription successful!');
+        // Broadcast an event to notify other widgets
+        $rootScope.$broadcast('subscriptionUpdated', { action: 'subscribe', courseId: courseId });
+      }, function(error) {
+        var errorMessage = 'An error occurred during subscription.';
+        if (error && error.data && error.data.error) {
+          errorMessage = 'Subscription failed: ' + error.data.error;
+        } else if (error && error.statusText) {
+          errorMessage = 'Subscription failed: ' + error.statusText;
+        }
+        spModal.alert(errorMessage);
+      });
+  };
+};
+]]></client_script>
+        <controller_as>c</controller_as>
+        <css>.subscription-drop-zone {
+  position: fixed;
+  width: 30%;
+  height: 50%;
+  border: 2px dashed #ccc;
+  padding: 20px;
+  text-align: center;
+  background-color: #fafafa;
+  transition: background-color 0.3s, border-color 0.3s;
+}
+
+.subscription-drop-zone.drag-over {
+  border-color: #007bff; /* Blue outline */
+  background-color: #e9f7ff;
+}
+
+.drop-zone-content h2 {
+  margin: 0;
+  font-size: 1.5em;
+  color: #777;
+}
+
+.course-preview {
+  border: 1px solid #ccc;
+  padding: 15px;
+  background-color: #fff;
+  text-align: left;
+}</css>
+        <data_table>sp_instance</data_table>
+        <demo_data/>
+        <description/>
+        <docs/>
+        <field_list/>
+        <has_preview>false</has_preview>
+        <id>subscription_drop_zone</id>
+        <internal>false</internal>
+        <link><![CDATA[function link(scope, element, attrs, controller) {  }]]></link>
+        <name>Subscription Drop Zone</name>
+        <option_schema/>
+        <public>false</public>
+        <roles/>
+        <script><![CDATA[(function() {  /* populate the 'data' object */  /* e.g., data.table = $sp.getValue('table'); */})();]]></script>
+        <servicenow>false</servicenow>
+        <sys_class_name>sp_widget</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2024-09-28 23:43:31</sys_created_on>
+        <sys_id>573980f383b416101d959796feaad3b2</sys_id>
+        <sys_mod_count>28</sys_mod_count>
+        <sys_name>Subscription Drop Zone</sys_name>
+        <sys_package display_value="CourseHub" source="x_quo_coursehub">d7affc501bf0ded0afce657a234bcb67</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="CourseHub">d7affc501bf0ded0afce657a234bcb67</sys_scope>
+        <sys_update_name>sp_widget_573980f383b416101d959796feaad3b2</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-09-30 11:07:35</sys_updated_on>
+        <template><![CDATA[<div class="subscription-drop-zone"
+     ng-class="{'drag-over': c.isDragOver}"
+     ondragover="angular.element(this).scope().c.onDragOver(event)"
+     ondragleave="angular.element(this).scope().c.onDragLeave(event)"
+     ondrop="angular.element(this).scope().c.onDrop(event)">
+  <div class="drop-zone-content">
+    <h2 ng-if="!c.draggedCourse">Drop here to subscribe to the course</h2>
+    <div ng-if="c.draggedCourse" class="course-preview">
+      <h3>{{c.draggedCourse.title}}</h3>
+      <p>{{c.draggedCourse.description}}</p>
+      <p>{{c.draggedCourse.duration}}</p>
+      <p>{{c.draggedCourse.type}}</p>
+    </div>
+  </div>
+</div>
+]]></template>
+    </sp_widget>
+    <sys_es_latest_script action="INSERT_OR_UPDATE">
+        <id>573980f383b416101d959796feaad3b2</id>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2024-09-29 02:55:30</sys_created_on>
+        <sys_id>f72530ff837816101d959796feaad32f</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-09-29 02:55:30</sys_updated_on>
+        <table>sp_widget</table>
+        <use_es_latest>true</use_es_latest>
+    </sys_es_latest_script>
+</record_update>

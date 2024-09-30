@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_widget">
+    <sp_widget action="INSERT_OR_UPDATE">
+        <category>custom</category>
+        <client_script><![CDATA[api.controller = function($scope, $http, spModal, $rootScope) {
+    var c = this;
+
+    c.subscriptions = c.data.subscriptions || [];
+
+    c.unsubscribe = function(subscriptionId) {
+        var requestBody = { subscription_id: subscriptionId };
+        $http.post('/api/x_quo_coursehub/course_subscription_api/unsubscribe', requestBody)
+            .then(function(response) {
+                spModal.alert('Unsubscribed successfully!');
+                // Remove the unsubscribed course from the list
+                c.subscriptions = c.subscriptions.filter(function(subscription) {
+                    return subscription.subscription_sys_id !== subscriptionId;
+                });
+                // Broadcast unsubscribe event
+                $rootScope.$broadcast('subscriptionUpdated', { action: 'unsubscribe', subscriptionId: subscriptionId });
+            }, function(error) {
+                var errorMessage = 'An error occurred during unsubscription.';
+                if (error && error.data && error.data.error) {
+                    errorMessage = 'Unsubscription failed: ' + error.data.error;
+                } else if (error && error.statusText) {
+                    errorMessage = 'Unsubscription failed: ' + error.statusText;
+                }
+                spModal.alert(errorMessage);
+            });
+    };
+};
+]]></client_script>
+        <controller_as>c</controller_as>
+        <css>.my-courses {
+    /* Will modify styles for My Courses list*/
+}
+.course-item {
+    border: 1px solid #ccc;
+    padding: 15px;
+    margin-bottom: 10px;
+}
+</css>
+        <data_table>sp_instance</data_table>
+        <demo_data/>
+        <description/>
+        <docs/>
+        <field_list/>
+        <has_preview>false</has_preview>
+        <id>my_courses</id>
+        <internal>false</internal>
+        <link><![CDATA[function link(scope, element, attrs, controller) {  }]]></link>
+        <name>My Courses</name>
+        <option_schema/>
+        <public>false</public>
+        <roles/>
+        <script><![CDATA[(function() {
+    data.subscriptions = [];
+    var userId = gs.getUserID();
+    var learnerGr = new GlideRecord('x_quo_coursehub_learner');
+    learnerGr.addQuery('user_account', userId);
+    learnerGr.query();
+    if (learnerGr.next()) {
+        var subscriptionGr = new GlideRecord('x_quo_coursehub_course_subscription');
+        subscriptionGr.addQuery('learner', learnerGr.sys_id);
+        subscriptionGr.orderByDesc('subscription_date');
+        subscriptionGr.query();
+        while (subscriptionGr.next()) {
+            var course = subscriptionGr.course.getRefRecord();
+            
+            // Check for valid course record
+            if (course.isValidRecord()) {
+                data.subscriptions.push({
+                    subscription_sys_id: subscriptionGr.getValue('sys_id'),
+                    course_sys_id: course.getValue('sys_id'),
+                    title: course.getValue('title'),
+                    description: course.getValue('description'),
+                    duration: course.getDisplayValue('duration'),
+                    type: course.getDisplayValue('type'),
+                    subscription_date: subscriptionGr.getDisplayValue('subscription_date')
+                });
+            } else {
+                gs.info('Invalid course reference in subscription with sys_id: ' + subscriptionGr.getValue('sys_id'));
+            }
+        }
+    } else {
+        data.noSubscriptions = true;
+    }
+})();
+]]></script>
+        <servicenow>false</servicenow>
+        <sys_class_name>sp_widget</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2024-09-27 14:22:29</sys_created_on>
+        <sys_id>9f3f305383f092101d959796feaad3ed</sys_id>
+        <sys_mod_count>13</sys_mod_count>
+        <sys_name>My Courses</sys_name>
+        <sys_package display_value="CourseHub" source="x_quo_coursehub">d7affc501bf0ded0afce657a234bcb67</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="CourseHub">d7affc501bf0ded0afce657a234bcb67</sys_scope>
+        <sys_update_name>sp_widget_9f3f305383f092101d959796feaad3ed</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-09-30 03:15:08</sys_updated_on>
+        <template><![CDATA[<div class="my-courses">
+    <h2>My Courses</h2>
+    <div ng-if="c.subscriptions.length === 0">
+        <p>You have not subscribed to any courses yet.</p>
+    </div>
+    <div ng-if="c.subscriptions.length > 0">
+        <div class="course-item" ng-repeat="subscription in c.subscriptions">
+            <h3>{{subscription.title}}</h3>
+            <p>{{subscription.description}}</p>
+            <p>Duration: {{subscription.duration}}</p>
+            <p>Type: {{subscription.type}}</p>
+            <p>Subscribed on: {{subscription.subscription_date}}</p>
+            <button class="btn btn-danger" ng-click="c.unsubscribe(subscription.subscription_sys_id)">Unsubscribe</button>
+        </div>
+    </div>
+</div>
+]]></template>
+    </sp_widget>
+    <sys_es_latest_script action="INSERT_OR_UPDATE">
+        <id>9f3f305383f092101d959796feaad3ed</id>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2024-09-28 21:26:29</sys_created_on>
+        <sys_id>c0e9676f83f016101d959796feaad326</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-09-28 21:26:29</sys_updated_on>
+        <table>sp_widget</table>
+        <use_es_latest>true</use_es_latest>
+    </sys_es_latest_script>
+</record_update>

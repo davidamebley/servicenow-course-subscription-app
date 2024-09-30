@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sys_ws_operation">
+    <sys_ws_operation action="INSERT_OR_UPDATE">
+        <active>true</active>
+        <consumes>application/json,application/xml,text/xml</consumes>
+        <consumes_customized>false</consumes_customized>
+        <default_operation_uri/>
+        <enforce_acl>cf9d01d3e73003009d6247e603f6a990</enforce_acl>
+        <http_method>POST</http_method>
+        <name>Unsubscribe from Course</name>
+        <operation_script><![CDATA[(function process(request, response) {
+    var requestBody = request.body.data;
+    var courseId = requestBody.course_id;
+    var subscriptionId = requestBody.subscription_id;
+    var userId = gs.getUserID();
+
+    // Log incoming data
+    gs.info('Unsubscribe API called with courseId: ' + courseId + ', subscriptionId: ' + subscriptionId + ', and userId: ' + userId);
+
+    // Find learner record
+    var learnerGr = new GlideRecord('x_quo_coursehub_learner');
+    learnerGr.addQuery('user_account', userId);
+    learnerGr.query();
+    if (!learnerGr.next()) {
+        response.setStatus(404); // Not Found
+        response.setBody({ error: 'Learner not found.' });
+        return;
+    }
+
+    // Find the subscription
+    var subGr = new GlideRecord('x_quo_coursehub_course_subscription');
+    subGr.addQuery('learner', learnerGr.sys_id);
+
+    if (subscriptionId) {
+        subGr.addQuery('sys_id', subscriptionId);
+    } else if (courseId) {
+        subGr.addQuery('course', courseId);
+    } else {
+        response.setStatus(400); // Bad Request
+        response.setBody({ error: 'Invalid request: missing course_id or subscription_id.' });
+        return;
+    }
+
+    subGr.query();
+    if (subGr.next()) {
+        subGr.deleteRecord();
+        response.setStatus(200); // OK
+        response.setBody({ message: 'Unsubscribed successfully.' });
+    } else {
+        response.setStatus(404); // Not Found
+        response.setBody({ error: 'Subscription not found.' });
+    }
+})(request, response);
+]]></operation_script>
+        <operation_uri>/api/x_quo_coursehub/course_subscription_api/unsubscribe</operation_uri>
+        <produces>application/json,application/xml,text/xml</produces>
+        <produces_customized>false</produces_customized>
+        <relative_path>/unsubscribe</relative_path>
+        <request_example/>
+        <requires_acl_authorization>true</requires_acl_authorization>
+        <requires_authentication>true</requires_authentication>
+        <requires_snc_internal_role>true</requires_snc_internal_role>
+        <short_description/>
+        <sys_class_name>sys_ws_operation</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2024-09-28 21:28:23</sys_created_on>
+        <sys_id>f6a9afab83b016101d959796feaad35c</sys_id>
+        <sys_mod_count>1</sys_mod_count>
+        <sys_name>Unsubscribe from Course</sys_name>
+        <sys_package display_value="CourseHub" source="x_quo_coursehub">d7affc501bf0ded0afce657a234bcb67</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="CourseHub">d7affc501bf0ded0afce657a234bcb67</sys_scope>
+        <sys_update_name>sys_ws_operation_f6a9afab83b016101d959796feaad35c</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-09-29 19:12:54</sys_updated_on>
+        <web_service_definition display_value="Course Subscription API">3d47612383b8d2101d959796feaad3ed</web_service_definition>
+        <web_service_version/>
+    </sys_ws_operation>
+    <sys_es_latest_script action="INSERT_OR_UPDATE">
+        <id>f6a9afab83b016101d959796feaad35c</id>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2024-09-28 21:28:23</sys_created_on>
+        <sys_id>8c5aa363833416101d959796feaad359</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-09-28 21:28:23</sys_updated_on>
+        <table>sys_ws_operation</table>
+        <use_es_latest>true</use_es_latest>
+    </sys_es_latest_script>
+</record_update>

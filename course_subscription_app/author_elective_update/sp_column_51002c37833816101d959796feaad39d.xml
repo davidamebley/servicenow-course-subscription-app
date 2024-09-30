@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_column">
+    <sp_column action="DELETE">
+        <class_name/>
+        <order>1</order>
+        <semantic_tag/>
+        <size/>
+        <size_lg/>
+        <size_sm/>
+        <size_xs/>
+        <sp_row display_value="1">9900e433833816101d959796feaad307</sp_row>
+        <sys_class_name>sp_column</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2024-09-29 01:23:02</sys_created_on>
+        <sys_id>51002c37833816101d959796feaad39d</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>1</sys_name>
+        <sys_package display_value="CourseHub" source="x_quo_coursehub">d7affc501bf0ded0afce657a234bcb67</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="CourseHub">d7affc501bf0ded0afce657a234bcb67</sys_scope>
+        <sys_update_name>sp_column_51002c37833816101d959796feaad39d</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-09-29 01:23:02</sys_updated_on>
+    </sp_column>
+    <sys_update_version action="INSERT_OR_UPDATE">
+        <action>DELETE</action>
+        <application display_value="CourseHub">d7affc501bf0ded0afce657a234bcb67</application>
+        <file_path/>
+        <instance_id>18c1100bdb7442182f082a5913961938</instance_id>
+        <instance_name>dev240230</instance_name>
+        <name>sp_column_51002c37833816101d959796feaad39d</name>
+        <payload><![CDATA[<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_column"><sp_column action="INSERT_OR_UPDATE"><class_name/><order>1</order><semantic_tag/><size/><size_lg/><size_sm/><size_xs/><sp_row display_value="1">9900e433833816101d959796feaad307</sp_row><sys_class_name>sp_column</sys_class_name><sys_created_by>admin</sys_created_by><sys_created_on>2024-09-29 01:23:02</sys_created_on><sys_id>51002c37833816101d959796feaad39d</sys_id><sys_mod_count>0</sys_mod_count><sys_name>1</sys_name><sys_package display_value="CourseHub" source="x_quo_coursehub">d7affc501bf0ded0afce657a234bcb67</sys_package><sys_policy/><sys_scope display_value="CourseHub">d7affc501bf0ded0afce657a234bcb67</sys_scope><sys_update_name>sp_column_51002c37833816101d959796feaad39d</sys_update_name><sys_updated_by>admin</sys_updated_by><sys_updated_on>2024-09-29 01:23:02</sys_updated_on></sp_column></record_update>]]></payload>
+        <payload_hash>-174743452</payload_hash>
+        <record_name>1</record_name>
+        <reverted_from/>
+        <source>0d205c9f83bc52101d959796feaad31c</source>
+        <source_table>sys_update_set</source_table>
+        <state>previous</state>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2024-09-29 01:23:02</sys_created_on>
+        <sys_id>95002c37833816101d959796feaad39f</sys_id>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_recorded_at>1923b5fbb9f0000001</sys_recorded_at>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-09-29 01:23:02</sys_updated_on>
+        <type>Column</type>
+        <update_guid>99002c3735381610dec46d5c53fc389e</update_guid>
+        <update_guid_history>99002c3735381610dec46d5c53fc389e:-174743452</update_guid_history>
+    </sys_update_version>
+    <sys_metadata_delete action="INSERT_OR_UPDATE">
+        <sys_audit_delete display_value="1">64602477833816101d959796feaad365</sys_audit_delete>
+        <sys_class_name>sys_metadata_delete</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2024-09-29 01:24:37</sys_created_on>
+        <sys_db_object display_value="" name="sp_column">sp_column</sys_db_object>
+        <sys_id>02c6767b72a944189c17d54027bc9ab1</sys_id>
+        <sys_metadata>51002c37833816101d959796feaad39d</sys_metadata>
+        <sys_mod_count>0</sys_mod_count>
+        <sys_name>1</sys_name>
+        <sys_package display_value="CourseHub" source="x_quo_coursehub">d7affc501bf0ded0afce657a234bcb67</sys_package>
+        <sys_parent/>
+        <sys_policy/>
+        <sys_scope display_value="CourseHub">d7affc501bf0ded0afce657a234bcb67</sys_scope>
+        <sys_scope_delete display_value="">000122c0f5d3422480b2ea6a41b8cf10</sys_scope_delete>
+        <sys_update_name>sp_column_51002c37833816101d959796feaad39d</sys_update_name>
+        <sys_update_version display_value="sp_column_51002c37833816101d959796feaad39d">95002c37833816101d959796feaad39f</sys_update_version>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2024-09-29 01:24:37</sys_updated_on>
+    </sys_metadata_delete>
+</record_update>
